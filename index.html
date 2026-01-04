@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AI Text / PDF Predictor</title>
+<style>
+    body {
+        background: #f5f7fa;
+        font-family: Arial, sans-serif;
+        display: flex;
+        justify-content: center;
+        padding: 40px;
+    }
+
+    .container {
+        background: white;
+        padding: 30px;
+        width: 450px;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+
+    h2 {
+        text-align: center;
+        margin-bottom: 25px;
+        color: #333;
+    }
+
+    .section-title {
+        font-size: 16px;
+        margin: 12px 0;
+        font-weight: bold;
+        color: #444;
+    }
+
+    textarea {
+        width: 100%;
+        height: 120px;
+        resize: none;
+        padding: 10px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        font-size: 14px;
+        margin-bottom: 10px;
+    }
+
+    input[type="file"] {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        background: #fafafa;
+    }
+
+    button {
+        width: 100%;
+        padding: 12px;
+        background: #0066ff;
+        border: none;
+        border-radius: 6px;
+        color: white;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        margin-top: 12px;
+        transition: 0.3s;
+    }
+
+    button:hover {
+        background: #004dcc;
+    }
+
+    #status {
+        margin-top: 15px;
+        font-size: 14px;
+        text-align: center;
+        color: #333;
+        white-space: pre-wrap;
+    }
+
+    .divider {
+        margin: 20px 0;
+        text-align: center;
+        font-size: 14px;
+        color: #777;
+    }
+</style>
+</head>
+
+<body>
+<div class="container">
+    <h2>Resume / cv predictor app </h2>
+
+    <div class="section-title">Enter Text</div>
+    <textarea id="textInput" placeholder="Type or paste your text here..."></textarea>
+    <button onclick="sendText()">Send Text to API</button>
+
+    <div class="divider">— OR —</div>
+
+    <div class="section-title">Upload PDF / Text File</div>
+
+    <form id="uploadForm">
+        <input 
+            type="file" 
+            id="fileInput" 
+            accept=".pdf,.txt"
+        />
+        <button type="submit">Upload File</button>
+    </form>
+
+    <p id="status"></p>
+</div>
+
+
+<script>
+    const statusText = document.getElementById("status");
+
+  
+    async function sendText() {
+        const text = document.getElementById("textInput").value;
+        if (!text.trim()) {
+            statusText.textContent = "Please enter text.";
+            return;
+        }
+
+        statusText.textContent = "Sending text...";
+
+        try {
+            const resp = await fetch("http://localhost:8000/predict", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text: text })
+            });
+
+            if (!resp.ok) {
+                throw new Error("Server returned status " + resp.status);
+            }
+
+            const data = await resp.json();
+           
+            statusText.textContent = "Text Prediction: " + data.prediction;
+        } catch (err) {
+            statusText.textContent = "Error (text): " + err.message;
+            console.error(err);
+        }
+    }
+
+    const form = document.getElementById("uploadForm");
+    const fileInput = document.getElementById("fileInput");
+
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const file = fileInput.files[0];
+        if (!file) {
+            statusText.textContent = "Please choose a file.";
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("file", file); // name must match 'file' in /predict-file
+
+        statusText.textContent = "Uploading file...";
+
+        try {
+            const response = await fetch("http://localhost:8000/predict-file", {
+                method: "POST",
+                body: formData,
+            });
+
+            if (!response.ok) {
+                throw new Error("Server returned status " + response.status);
+            }
+
+            const data = await response.json();
+            statusText.textContent =
+                "File: " + data.filename + "\n" +
+                "Prediction: " + data.prediction + "\n" +
+                "Characters extracted: " + data.chars_extracted;
+        } catch (err) {
+            statusText.textContent = "Error (file): " + err.message;
+            console.error(err);
+        }
+    });
+</script>
+
+</body>
+</html>
